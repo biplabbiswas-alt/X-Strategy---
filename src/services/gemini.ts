@@ -23,7 +23,7 @@ export async function generateTweets(day: DayOfWeek, topic?: string) {
     - Use relevant hashtags sparingly.
     - Ensure the tone matches Biplab's expertise.
     - If a topic is provided, weave it naturally into the strategy.
-    - For each tweet, provide a "catchy image prompt" that aligns with the post's message. This prompt should be suitable for an AI image generator (like Midjourney or DALL-E) or to search for a relevant stock photo.
+    - Provide ONE "catchy image prompt" that aligns with the entire set of posts. This prompt should be suitable for an AI image generator (like Midjourney or DALL-E) or to search for a relevant stock photo.
     - Return exactly 4 tweets.
   `;
 
@@ -33,24 +33,30 @@ export async function generateTweets(day: DayOfWeek, topic?: string) {
     config: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            content: { type: Type.STRING, description: "The text content of the tweet" },
-            type: { type: Type.STRING, description: "The specific angle or type of this tweet (e.g., Hook, Tip, Question)" },
-            imagePrompt: { type: Type.STRING, description: "A catchy image prompt that aligns with the post" }
+        type: Type.OBJECT,
+        properties: {
+          tweets: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                content: { type: Type.STRING, description: "The text content of the tweet" },
+                type: { type: Type.STRING, description: "The specific angle or type of this tweet (e.g., Hook, Tip, Question)" }
+              },
+              required: ["content", "type"]
+            }
           },
-          required: ["content", "type", "imagePrompt"]
-        }
+          overallImagePrompt: { type: Type.STRING, description: "A catchy image prompt that aligns with the entire set of posts" }
+        },
+        required: ["tweets", "overallImagePrompt"]
       }
     }
   });
 
   try {
-    return JSON.parse(response.text || "[]");
+    return JSON.parse(response.text || "{}");
   } catch (e) {
     console.error("Failed to parse Gemini response", e);
-    return [];
+    return { tweets: [], overallImagePrompt: "" };
   }
 }

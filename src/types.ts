@@ -59,5 +59,9 @@ export const STRATEGY: WeeklyStrategy = {
 export interface GeneratedTweet {
   content: string;
   type: string;
-  imagePrompt: string;
+}
+
+export interface ContentResponse {
+  tweets: GeneratedTweet[];
+  overallImagePrompt: string;
 }

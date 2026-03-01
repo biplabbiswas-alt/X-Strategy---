@@ -26,7 +26,6 @@ const DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday
 interface GeneratedTweet {
   content: string;
   type: string;
-  imagePrompt: string;
 }
 
 export default function App() {
@@ -35,13 +34,15 @@ export default function App() {
   const [topic, setTopic] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedTweets, setGeneratedTweets] = useState<GeneratedTweet[]>([]);
-  const [copiedState, setCopiedState] = useState<{ index: number; type: 'content' | 'image' } | null>(null);
+  const [overallImagePrompt, setOverallImagePrompt] = useState<string>('');
+  const [copiedState, setCopiedState] = useState<{ index: number | 'full' | 'overall-image'; type: 'content' | 'image' } | null>(null);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const tweets = await generateTweets(selectedDay, topic);
-      setGeneratedTweets(tweets);
+      const response = await generateTweets(selectedDay, topic);
+      setGeneratedTweets(response.tweets);
+      setOverallImagePrompt(response.overallImagePrompt);
     } catch (error) {
       console.error('Generation failed', error);
     } finally {
@@ -49,10 +50,15 @@ export default function App() {
     }
   };
 
-  const copyToClipboard = (text: string, index: number, type: 'content' | 'image') => {
+  const copyToClipboard = (text: string, index: number | 'full' | 'overall-image', type: 'content' | 'image') => {
     navigator.clipboard.writeText(text);
     setCopiedState({ index, type });
     setTimeout(() => setCopiedState(null), 2000);
+  };
+
+  const copyFullPost = () => {
+    const fullText = generatedTweets.map((t, i) => `Post ${i + 1} (${t.type}):\n${t.content}`).join('\n\n');
+    copyToClipboard(fullText, 'full', 'content');
   };
 
   const getIconForDay = (day: DayOfWeek) => {
@@ -224,8 +230,37 @@ export default function App() {
                     className="space-y-6 pt-8 border-t border-[#141414]"
                   >
                     <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-bold italic serif tracking-tight">Generated Content</h2>
-                      <span className="text-[10px] font-mono opacity-50 uppercase tracking-widest">4 Unique Posts</span>
+                      <div className="space-y-1">
+                        <h2 className="text-xl font-bold italic serif tracking-tight">Generated Content</h2>
+                        <span className="text-[10px] font-mono opacity-50 uppercase tracking-widest">4 Unique Posts</span>
+                      </div>
+                      <button 
+                        onClick={copyFullPost}
+                        className="bg-[#141414] text-[#E4E3E0] px-4 py-2 text-[10px] font-mono uppercase tracking-widest flex items-center gap-2 hover:opacity-90 transition-opacity"
+                      >
+                        {copiedState?.index === 'full' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        {copiedState?.index === 'full' ? 'Copied Full Text' : 'Copy Full Post Text'}
+                      </button>
+                    </div>
+
+                    {/* Overall Image Prompt */}
+                    <div className="border border-[#141414] p-6 bg-[#141414]/5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Camera className="w-4 h-4" />
+                          <h3 className="text-xs font-bold uppercase tracking-widest">Overall Image Strategy</h3>
+                        </div>
+                        <button 
+                          onClick={() => copyToClipboard(overallImagePrompt, 'overall-image', 'image')}
+                          className="p-1.5 hover:bg-[#141414]/10 rounded flex items-center gap-1.5 transition-colors"
+                        >
+                          <span className="text-[10px] font-mono uppercase">Copy Prompt</span>
+                          {copiedState?.index === 'overall-image' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                      <p className="text-sm italic opacity-80 leading-relaxed">
+                        {overallImagePrompt}
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -245,25 +280,6 @@ export default function App() {
                             {tweet.content}
                           </p>
                           
-                          <div className="mt-6 pt-4 border-t border-[#141414]/10 group-hover:border-white/10 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5 opacity-50 group-hover:opacity-100">
-                                <Camera className="w-3 h-3" />
-                                <span className="text-[10px] font-mono uppercase tracking-widest">Image Prompt</span>
-                              </div>
-                              <button 
-                                onClick={() => copyToClipboard(tweet.imagePrompt, idx, 'image')}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-white/10 rounded flex items-center gap-1.5"
-                              >
-                                <span className="text-[10px] font-mono uppercase">Copy Prompt</span>
-                                {copiedState?.index === idx && copiedState?.type === 'image' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                              </button>
-                            </div>
-                            <p className="text-[11px] leading-relaxed opacity-60 group-hover:opacity-80 italic">
-                              {tweet.imagePrompt}
-                            </p>
-                          </div>
-
                           <div className="mt-4 pt-4 border-t border-[#141414]/10 group-hover:border-white/10 flex items-center justify-between">
                             <span className="text-[10px] font-mono opacity-50 group-hover:opacity-100">{tweet.content.length} chars</span>
                             <span className="text-[10px] font-mono opacity-50 group-hover:opacity-100">Ready to post</span>
